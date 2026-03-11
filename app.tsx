@@ -239,7 +239,10 @@ const Icons = {
   Folder: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>,
   Globe: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>,
   Type: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>,
-  Radio: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48 0a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>
+  Radio: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48 0a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>,
+  PiP: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="13" y="13" width="6" height="4"></rect></svg>,
+  Cast: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path><line x1="2" y1="20" x2="2.01" y2="20"></line></svg>,
+  Check: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
 };
 
 const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality, videoRef, setIsPlaying }) => {
@@ -451,6 +454,7 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(() => getCookie('streamos_volume', 1));
   const [isMuted, setIsMuted] = useState(() => getCookie('streamos_isMuted', false));
+  const [healthCache, setHealthCache] = useState<any>({});
 
   const idleTimer = useRef<any>(null);
   const isDragging = useRef(false);
@@ -751,6 +755,43 @@ export default function App() {
     setTimeout(() => setScreenshotMsg(''), 4000);
   };
 
+  const togglePiP = async () => {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (videoRef.current && (videoRef.current as any).requestPictureInPicture) {
+        await (videoRef.current as any).requestPictureInPicture();
+      }
+    } catch(err) {
+      console.error(err);
+      setScreenshotMsg('PiP not supported or blocked.');
+      setTimeout(() => setScreenshotMsg(''), 4000);
+    }
+  };
+
+  const requestCast = () => {
+    if (!videoRef.current) return;
+    if ((videoRef.current as any).webkitShowPlaybackTargetPicker) {
+      (videoRef.current as any).webkitShowPlaybackTargetPicker();
+    } else {
+       setScreenshotMsg('Native Cast requires Safari / Chrome extension.');
+       setTimeout(() => setScreenshotMsg(''), 4000);
+    }
+  };
+
+  const pingHealth = async (e: any, channel: any) => {
+    e.stopPropagation();
+    if (healthCache[channel.id] === 'checking') return;
+    
+    setHealthCache((prev: any) => ({...prev, [channel.id]: 'checking'}));
+    try {
+      await fetch(channel.url, { method: 'HEAD', mode: 'no-cors' });
+      setHealthCache((prev: any) => ({...prev, [channel.id]: 'online'}));
+    } catch (err) {
+      setHealthCache((prev: any) => ({...prev, [channel.id]: 'offline'}));
+    }
+  };
+
   const toggleSource = (id) => {
     setSources(sources.map(s => s.id === id ? { ...s, active: !s.active } : s));
   };
@@ -883,6 +924,13 @@ export default function App() {
 
             <div className="w-px h-5 bg-white/20"></div>
 
+            <button onClick={togglePiP} className="text-white hover:text-yellow-400 transition transform hover:scale-110" title="Picture-in-Picture">
+              <Icons.PiP />
+            </button>
+            <button onClick={requestCast} className="text-white hover:text-cyan-400 transition transform hover:scale-110" title="AirPlay / Cast">
+              <Icons.Cast />
+            </button>
+
             <button onClick={handleScreenshot} className="text-white hover:text-purple-400 transition transform hover:scale-110" title="Take Screenshot">
               <Icons.Camera />
             </button>
@@ -1013,8 +1061,19 @@ export default function App() {
 
                     {/* Compact Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-[13px] truncate leading-tight mb-1 text-white/90">
-                        {channel.name}
+                      <div className="font-medium text-[13px] truncate leading-tight mb-1 text-white/90 flex justify-between items-center pr-2">
+                        <span className="truncate">{channel.name}</span>
+                        <button 
+                          onClick={(e) => pingHealth(e, channel)}
+                          className={`shrink-0 ml-2 rounded flex items-center justify-center transition
+                            ${healthCache[channel.id] === 'online' ? 'text-green-400' : 
+                              healthCache[channel.id] === 'offline' ? 'text-red-500' : 
+                              healthCache[channel.id] === 'checking' ? 'text-yellow-400 animate-pulse' : 
+                              'text-white/20 hover:text-white/50'}`}
+                          title="Ping Stream Health"
+                        >
+                          <Icons.Check />
+                        </button>
                       </div>
                       <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5 truncate uppercase tracking-wide">
                         <span title={countryDetails.name} className="text-[12px]">{countryDetails.flag}</span>
