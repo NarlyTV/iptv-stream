@@ -125,7 +125,7 @@ const globalStyles = `
     background: #fff; border-radius: 50%; transition: 0.2s;
   }
   .toggle-switch:checked::after { left: 18px; background: #000; }
-  
+
   /* Custom Range Slider for Volume */
   .vol-slider {
     -webkit-appearance: none;
@@ -163,7 +163,7 @@ const DEFAULT_SOURCES = [
   { id: 'i_ae', label: 'IPTV-Org (UAE)', url: 'https://iptv-org.github.io/iptv/countries/ae.m3u', active: true, custom: false },
   { id: 'i_ru', label: 'IPTV-Org (Russia)', url: 'https://iptv-org.github.io/iptv/countries/ru.m3u', active: false, custom: false },
   { id: 'i_cn', label: 'IPTV-Org (China)', url: 'https://iptv-org.github.io/iptv/countries/cn.m3u', active: false, custom: false },
-  { id: 'i_global', label: 'IPTV-Org (Global/All 30k+)', url: 'https://iptv-org.github.io/iptv/index.m3u', active: false, custom: false }, // Default off to save memory initially
+  { id: 'i_global', label: 'IPTV-Org (Global/All 30k+)', url: 'https://iptv-org.github.io/iptv/index.m3u', active: false, custom: false },
   { id: 'p_usa', label: 'Pluto TV (USA)', url: 'https://i.mjh.nz/PlutoTV/us.m3u8', active: false, custom: false },
   { id: 'plex_us', label: 'Plex Live TV', url: 'https://i.mjh.nz/Plex/us.m3u8', active: false, custom: false },
   { id: 'roku_us', label: 'Roku Channel', url: 'https://i.mjh.nz/Roku/all.m3u8', active: false, custom: false },
@@ -172,17 +172,17 @@ const DEFAULT_SOURCES = [
   { id: 'pbs_us', label: 'PBS Network', url: 'https://i.mjh.nz/PBS/all.m3u8', active: false, custom: false }
 ];
 
-const RENDER_LIMIT = 400; 
+const RENDER_LIMIT = 400;
 
 // Cookie Persistence Utilities
-const setCookie = (name, value, days = 365) => {
+const setCookie = (name: string, value: any, days = 365) => {
   const d = new Date();
   d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
   const expires = "expires=" + d.toUTCString();
   document.cookie = name + "=" + encodeURIComponent(JSON.stringify(value)) + ";" + expires + ";path=/";
 };
 
-const getCookie = (name, defaultValue = null) => {
+const getCookie = (name: string, defaultValue: any = null) => {
   const cname = name + "=";
   const decodedCookie = decodeURIComponent(document.cookie);
   const ca = decodedCookie.split(';');
@@ -268,7 +268,7 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
       if (!video) return;
 
       onStatus('BUFFERING');
-      setAvailableQualities([]); 
+      setAvailableQualities([]);
 
       if (hlsRef.current) hlsRef.current.destroy();
 
@@ -281,13 +281,19 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, (e: any, data: any) => {
-          video.play().then(() => onStatus('PLAYING')).catch(() => onStatus('PAUSED - CLICK TO PLAY'));
-          
-          const levels = data.levels.map((l: any, idx: number) => ({
+          video.play().then(() => {
+            onStatus('PLAYING');
+            setIsPlaying(true);
+          }).catch(() => {
+            onStatus('PAUSED - CLICK TO PLAY');
+            setIsPlaying(false);
+          });
+
+          const levels = data.levels.map((l, idx) => ({
             id: idx,
-            label: l.height ? `${l.height}p (${Math.round(l.bitrate/1000)} kbps)` : `${Math.round(l.bitrate/1000)} kbps`
+            label: l.height ? `${l.height}p (${Math.round(l.bitrate / 1000)} kbps)` : `${Math.round(l.bitrate / 1000)} kbps`
           }));
-          setAvailableQualities([{id: -1, label: 'Auto (Adaptive)'}, ...levels]);
+          setAvailableQualities([{ id: -1, label: 'Auto (Adaptive)' }, ...levels]);
         });
 
         hls.on(Hls.Events.ERROR, (event: any, data: any) => {
@@ -299,17 +305,23 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = channel.url;
         video.addEventListener('loadedmetadata', () => {
-          video.play().then(() => onStatus('PLAYING')).catch(() => onStatus('PAUSED - CLICK TO PLAY'));
+          video.play().then(() => {
+            onStatus('PLAYING');
+            setIsPlaying(true);
+          }).catch(() => {
+            onStatus('PAUSED - CLICK TO PLAY');
+            setIsPlaying(false);
+          });
         });
       }
     }
 
     return () => { if (hlsRef.current) hlsRef.current.destroy(); };
-  }, [channel, onStatus, setAvailableQualities, videoRef]);
+  }, [channel, onStatus, setAvailableQualities, videoRef, setIsPlaying]);
 
   useEffect(() => {
     const vid = videoRef.current;
-    if(!vid) return;
+    if (!vid) return;
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     vid.addEventListener('play', handlePlay);
@@ -326,17 +338,11 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
     }
   }, [currentQuality]);
 
-  useEffect(() => {
-    if (hlsRef.current && currentQuality !== undefined) {
-      hlsRef.current.currentLevel = parseInt(currentQuality);
-    }
-  }, [currentQuality]);
-
   return (
-    <video 
-      ref={videoRef} 
-      className="w-full h-full object-cover absolute inset-0 z-0 bg-black" 
-      crossOrigin="anonymous" 
+    <video
+      ref={videoRef}
+      className="w-full h-full object-cover absolute inset-0 z-0 bg-black"
+      crossOrigin="anonymous"
       autoPlay
       playsInline
       onClick={(e) => {
@@ -347,8 +353,7 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
   );
 };
 
-// Searchable Dropdown with Flag Support
-const SearchableSelect = ({ options, value, onChange, placeholder, icon }) => {
+const SearchableSelect = ({ options, value, onChange, placeholder, icon }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const wrapperRef = useRef(null);
@@ -361,21 +366,21 @@ const SearchableSelect = ({ options, value, onChange, placeholder, icon }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter(opt => 
+  const filteredOptions = options.filter(opt =>
     opt.label.toLowerCase().includes(search.toLowerCase())
   );
 
-  const selectedOpt = options.find(o => o.value === value);
+  const selectedOpt = options.find((o: any) => o.value === value);
 
   return (
     <div className={`relative w-full text-sm ${isOpen ? 'z-50' : 'z-10'}`} ref={wrapperRef}>
-      <div 
+      <div
         className="input-minimal w-full flex justify-between items-center cursor-pointer select-none gap-2"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center gap-2 truncate text-gray-300">
-           {icon}
-           <span className="truncate">{selectedOpt ? selectedOpt.label : placeholder}</span>
+          {icon}
+          <span className="truncate">{selectedOpt ? selectedOpt.label : placeholder}</span>
         </div>
         <Icons.ChevronDown />
       </div>
@@ -383,8 +388,8 @@ const SearchableSelect = ({ options, value, onChange, placeholder, icon }) => {
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-[#1a1a1c] border border-[rgba(255,255,255,0.1)] rounded-lg shadow-2xl overflow-hidden backdrop-blur-xl">
           <div className="p-2 border-b border-[rgba(255,255,255,0.05)] sticky top-0 bg-[#1a1a1c]">
-            <input 
-              type="text" 
+            <input
+              type="text"
               className="w-full bg-black/50 border border-[rgba(255,255,255,0.1)] rounded px-3 py-2 text-white text-sm outline-none focus:border-white/30"
               placeholder="Filter list..."
               value={search}
@@ -394,14 +399,14 @@ const SearchableSelect = ({ options, value, onChange, placeholder, icon }) => {
             />
           </div>
           <div className="max-h-60 overflow-y-auto p-1">
-            <div 
+            <div
               className={`px-3 py-2 cursor-pointer rounded hover:bg-white/10 ${value === '' ? 'bg-white/10 text-white' : 'text-gray-400'}`}
               onClick={() => { onChange(''); setIsOpen(false); setSearch(''); }}
             >
               [ Reset Filter ]
             </div>
             {filteredOptions.map((opt, i) => (
-              <div 
+              <div
                 key={i}
                 className={`px-3 py-2 cursor-pointer rounded hover:bg-white/10 truncate ${value === opt.value ? 'bg-white/10 text-white' : 'text-gray-300'}`}
                 onClick={() => { onChange(opt.value); setIsOpen(false); setSearch(''); }}
@@ -424,31 +429,32 @@ export default function App() {
     return DEFAULT_SOURCES;
   });
 
-  const [sourceCache, setSourceCache] = useState({});
+  const [sourceCache, setSourceCache] = useState<any>({});
   const [loadingState, setLoadingState] = useState(false);
   const [filters, setFilters] = useState(() => getCookie('streamos_filters', { type: 'all', value: '', search: '' }));
-  const [activeChannel, setActiveChannel] = useState(null);
+  const [activeChannel, setActiveChannel] = useState<any>(null);
   const [playerStatus, setPlayerStatus] = useState('STANDBY');
-  
+
   const [isIdle, setIsIdle] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => getCookie('streamos_sidebarWidth', 480));
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  
+
+  // Settings & Tools States
   const [showSettings, setShowSettings] = useState(false);
-  const [availableQualities, setAvailableQualities] = useState([]);
+  const [availableQualities, setAvailableQualities] = useState<any>([]);
   const [selectedQuality, setSelectedQuality] = useState(-1);
   const [screenshotMsg, setScreenshotMsg] = useState('');
   const [newSourceLabel, setNewSourceLabel] = useState('');
   const [newSourceUrl, setNewSourceUrl] = useState('');
 
-  // Video Control States
-  const videoRef = useRef(null);
+  // Video Controls State
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(() => getCookie('streamos_volume', 1));
   const [isMuted, setIsMuted] = useState(() => getCookie('streamos_isMuted', false));
 
-  const idleTimer = useRef(null);
+  const idleTimer = useRef<any>(null);
   const isDragging = useRef(false);
 
   useEffect(() => {
@@ -458,27 +464,13 @@ export default function App() {
     return () => { document.head.removeChild(styleSheet); };
   }, []);
 
-  useEffect(() => {
-    setCookie('streamos_sources', sources);
-  }, [sources]);
+  useEffect(() => { setCookie('streamos_sources', sources); }, [sources]);
+  useEffect(() => { setCookie('streamos_filters', filters); }, [filters]);
+  useEffect(() => { setCookie('streamos_sidebarWidth', sidebarWidth); }, [sidebarWidth]);
+  useEffect(() => { setCookie('streamos_volume', volume); }, [volume]);
+  useEffect(() => { setCookie('streamos_isMuted', isMuted); }, [isMuted]);
 
-  useEffect(() => {
-    setCookie('streamos_filters', filters);
-  }, [filters]);
-
-  useEffect(() => {
-    setCookie('streamos_sidebarWidth', sidebarWidth);
-  }, [sidebarWidth]);
-
-  useEffect(() => {
-    setCookie('streamos_volume', volume);
-  }, [volume]);
-
-  useEffect(() => {
-    setCookie('streamos_isMuted', isMuted);
-  }, [isMuted]);
-
-  const fetchWithFallback = async (url) => {
+  const fetchWithFallback = async (url: string) => {
     try {
       const res = await fetch(url);
       if (res.ok) return await res.text();
@@ -489,7 +481,7 @@ export default function App() {
       const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
       const proxyRes = await fetch(proxyUrl);
       if (proxyRes.ok) return await proxyRes.text();
-    } catch(proxyErr) {}
+    } catch (proxyErr) { }
     throw new Error(`Failed to load data from ${url}`);
   };
 
@@ -498,10 +490,10 @@ export default function App() {
       const activeSources = sources.filter(s => s.active);
       const toFetch = activeSources.filter(s => !sourceCache[s.id]);
       if (toFetch.length === 0) return;
-      
+
       setLoadingState(true);
       const newCacheData = {};
-      
+
       await Promise.all(toFetch.map(async (source) => {
         try {
           const text = await fetchWithFallback(source.url);
@@ -513,29 +505,28 @@ export default function App() {
             const line = lines[i].trim();
             if (line.startsWith('#EXTINF:')) {
               const name = line.split(',').pop().trim() || 'Unknown';
-              
+
               const countryMatch = line.match(/tvg-country="([^"]*)"/i);
               const categoryMatch = line.match(/group-title="([^"]*)"/i);
               const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
               const languageMatch = line.match(/tvg-language="([^"]*)"/i);
 
-              // Ultra Robust Country Parsing & Normalization
               let rawCode = countryMatch ? countryMatch[1].split(/[,;]/)[0].trim().toUpperCase() : '';
-              const codeMap = { 'USA':'US', 'UK':'GB', 'CAN':'CA', 'AUS':'AU', 'FRA':'FR', 'DEU':'DE', 'ITA':'IT', 'ESP':'ES', 'IRN':'IR', 'IRQ':'IQ', 'ARE':'AE', 'RUS':'RU', 'CHN':'CN', 'IND':'IN' };
+              const codeMap: any = { 'USA': 'US', 'UK': 'GB', 'CAN': 'CA', 'AUS': 'AU', 'FRA': 'FR', 'DEU': 'DE', 'ITA': 'IT', 'ESP': 'ES', 'IRN': 'IR', 'IRQ': 'IQ', 'ARE': 'AE', 'RUS': 'RU', 'CHN': 'CN', 'IND': 'IN' };
               const countryCode = codeMap[rawCode] || rawCode;
 
               const category = categoryMatch ? categoryMatch[1].trim() : '';
-              const logo = logoMatch ? logoMatch[1].trim() : null;
               const language = languageMatch ? languageMatch[1].trim() : '';
+              const logo = logoMatch ? logoMatch[1].trim() : null;
 
-              currentChan = { 
-                id: `${source.id}-${i}`, 
+              currentChan = {
+                id: `${source.id}-${i}`,
                 sourceId: source.id,
-                name, 
-                countryCode, 
-                category, 
+                name,
+                countryCode,
+                category,
                 language,
-                logo 
+                logo
               };
             } else if (line && !line.startsWith('#')) {
               if (currentChan) {
@@ -548,7 +539,7 @@ export default function App() {
           newCacheData[source.id] = parsedChannels;
         } catch (e) {
           console.error(`Error processing source ${source.label}:`, e);
-          newCacheData[source.id] = []; 
+          newCacheData[source.id] = [];
         }
       }));
 
@@ -570,8 +561,8 @@ export default function App() {
     const uniqueCategories = new Set();
     const uniqueLanguages = new Set();
     const uniqueSources = new Set();
-    
-    allChannels.forEach(c => {
+
+    allChannels.forEach((c: any) => {
       if (c.countryCode) uniqueCountryCodes.add(c.countryCode);
       if (c.category) uniqueCategories.add(c.category);
       if (c.language) uniqueLanguages.add(c.language);
@@ -579,9 +570,9 @@ export default function App() {
     });
 
     const processedCountries = Array.from(uniqueCountryCodes)
-      .map(code => {
-         const details = getCountryDetails(code);
-         return { value: code, label: `${details.flag} ${details.name}` };
+      .map((code: any) => {
+        const details = getCountryDetails(code);
+        return { value: code, label: `${details.flag} ${details.name}` };
       })
       .sort((a: any, b: any) => a.label.localeCompare(b.label));
 
@@ -596,8 +587,8 @@ export default function App() {
       .sort((a: any, b: any) => a.label.localeCompare(b.label));
 
     const processedSources = Array.from(uniqueSources)
-      .map(s => {
-        const srcObj = sources.find(src => src.id === s);
+      .map((s: any) => {
+        const srcObj = sources.find((src: any) => src.id === s);
         return { value: s, label: srcObj ? srcObj.label : s as string };
       })
       .sort((a: any, b: any) => a.label.localeCompare(b.label));
@@ -612,23 +603,22 @@ export default function App() {
 
   const filteredChannels = useMemo(() => {
     if (allChannels.length === 0) return [];
-    return allChannels.filter(c => {
+    return allChannels.filter((c: any) => {
       // Dynamic Match Filters
       if (filters.type === 'category' && filters.value && c.category !== filters.value) return false;
       if (filters.type === 'country' && filters.value && c.countryCode !== filters.value) return false;
       if (filters.type === 'language' && filters.value && c.language !== filters.value) return false;
       if (filters.type === 'source' && filters.value && c.sourceId !== filters.value) return false;
-      
-      // Robust Inclusive Search Bar Check
+
       if (filters.search) {
         const term = filters.search.toLowerCase();
         const countryName = getCountryDetails(c.countryCode).name.toLowerCase();
-        
+
         const matchName = c.name.toLowerCase().includes(term);
         const matchCat = c.category.toLowerCase().includes(term);
         const matchCountryCode = c.countryCode.toLowerCase().includes(term);
         const matchCountryName = countryName.includes(term);
-        
+
         if (!matchName && !matchCat && !matchCountryCode && !matchCountryName) return false;
       }
       return true;
@@ -641,8 +631,8 @@ export default function App() {
     const handleMouseMove = (e) => {
       if (!isDragging.current) return;
       let newWidth = e.clientX;
-      if (newWidth < 320) newWidth = 320; 
-      if (newWidth > window.innerWidth * 0.8) newWidth = window.innerWidth * 0.8; 
+      if (newWidth < 320) newWidth = 320;
+      if (newWidth > window.innerWidth * 0.8) newWidth = window.innerWidth * 0.8;
       setSidebarWidth(newWidth);
     };
     const handleMouseUp = () => {
@@ -660,18 +650,18 @@ export default function App() {
 
   useEffect(() => {
     const resetIdle = () => {
-      if (isDragging.current || showSettings || controlsExpanded) return; 
+      if (isDragging.current || showSettings || controlsExpanded) return;
       setIsIdle(false);
       clearTimeout(idleTimer.current);
       if (activeChannel && playerStatus === 'PLAYING') {
         idleTimer.current = setTimeout(() => setIsIdle(true), 5000);
       }
     };
-    
+
     window.addEventListener('mousemove', resetIdle);
     window.addEventListener('keydown', resetIdle);
     window.addEventListener('click', resetIdle);
-    
+
     resetIdle();
     return () => {
       window.removeEventListener('mousemove', resetIdle);
@@ -683,9 +673,9 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (showSettings) return; 
+      if (showSettings) return;
       const tag = document.activeElement.tagName;
-      if (tag === 'INPUT' || tag === 'SELECT') return; 
+      if (tag === 'INPUT' || tag === 'SELECT') return;
 
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
         e.preventDefault();
@@ -750,7 +740,7 @@ export default function App() {
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
+
       const a = document.createElement('a');
       a.href = canvas.toDataURL('image/png');
       a.download = `StreamOS_Capture_${Date.now()}.png`;
@@ -766,11 +756,11 @@ export default function App() {
   const toggleSource = (id) => {
     setSources(sources.map(s => s.id === id ? { ...s, active: !s.active } : s));
   };
-  
+
   const deleteSource = (id) => {
     setSources(sources.filter(s => s.id !== id));
     setSourceCache(prev => {
-      const nc = {...prev};
+      const nc = { ...prev };
       delete nc[id];
       return nc;
     });
@@ -791,7 +781,7 @@ export default function App() {
     setNewSourceUrl('');
   };
 
-  const activeSourceCount = sources.filter(s => s.active).length;
+  const activeSourceCount = sources.filter((s: any) => s.active).length;
 
   const typeOptions = [
     { value: 'all', label: 'All Channels' },
@@ -811,7 +801,7 @@ export default function App() {
     }
   };
 
-  const getIconForType = (typeVal) => {
+  const getIconForType = (typeVal: string) => {
      switch(typeVal) {
        case 'category': return <Icons.Folder />;
        case 'language': return <Icons.Type />;
@@ -823,50 +813,50 @@ export default function App() {
 
   return (
     <div className={`w-screen h-screen relative bg-black flex ${isIdle ? 'ui-idle' : ''}`}>
-      
+
       {/* 1. BACKGROUND VIDEO LAYER */}
-      <VideoPlayer 
-        channel={activeChannel} 
-        onStatus={setPlayerStatus} 
+      <VideoPlayer
+        channel={activeChannel}
+        onStatus={setPlayerStatus}
         setAvailableQualities={setAvailableQualities}
         currentQuality={selectedQuality}
         videoRef={videoRef}
         setIsPlaying={setIsPlaying}
       />
-      
+
       <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/30 to-transparent pointer-events-none z-0 ui-layer"></div>
 
       {/* Main Status OSD */}
       {!activeChannel ? (
         <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
-           <Icons.TV />
-           <span className="ml-4 text-3xl font-light tracking-wide opacity-50">Select a stream</span>
+          <Icons.TV />
+          <span className="ml-4 text-3xl font-light tracking-wide opacity-50">Select a stream</span>
         </div>
       ) : (
         <div className="absolute top-8 right-8 z-10 flex flex-col items-end pointer-events-none drop-shadow-lg ui-layer">
-           <div className="text-3xl font-medium shadow-black drop-shadow-md">{activeChannel.name}</div>
-           <div className="text-sm uppercase tracking-widest flex items-center gap-2 mt-1 drop-shadow-md">
-             {playerStatus === 'PLAYING' && <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>}
-             <span className={playerStatus === 'STREAM UNAVAILABLE' ? 'text-red-400' : 'text-white/80'}>
-               {playerStatus}
-             </span>
-           </div>
+          <div className="text-3xl font-medium shadow-black drop-shadow-md">{activeChannel.name}</div>
+          <div className="text-sm uppercase tracking-widest flex items-center gap-2 mt-1 drop-shadow-md">
+            {playerStatus === 'PLAYING' && <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>}
+            <span className={playerStatus === 'STREAM UNAVAILABLE' ? 'text-red-400' : 'text-white/80'}>
+              {playerStatus}
+            </span>
+          </div>
         </div>
       )}
 
       {/* Floating Minimal Controls (Bottom Right) */}
       {activeChannel && (
-        <div 
+        <div
           className={`absolute bottom-8 right-8 z-40 flex flex-row-reverse items-center gap-3 transition-all duration-700 ${isIdle && !controlsExpanded ? 'opacity-0 translate-y-8 pointer-events-none' : 'opacity-100 translate-y-0'}`}
           onMouseEnter={() => { clearTimeout(idleTimer.current); setIsIdle(false); }}
-          onMouseLeave={() => { 
-             if(playerStatus === 'PLAYING' && !controlsExpanded) {
-                 idleTimer.current = setTimeout(() => setIsIdle(true), 5000);
-             }
+          onMouseLeave={() => {
+            if (playerStatus === 'PLAYING' && !controlsExpanded) {
+              idleTimer.current = setTimeout(() => setIsIdle(true), 5000);
+            }
           }}
         >
-          <button 
-            onClick={() => setControlsExpanded(!controlsExpanded)} 
+          <button
+            onClick={() => setControlsExpanded(!controlsExpanded)}
             className={`w-12 h-12 rounded-full backdrop-blur-xl border flex items-center justify-center text-white shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 ${controlsExpanded ? 'bg-white/20 border-white/30 rotate-90' : 'bg-black/50 border-white/10 rotate-0'}`}
             title="Video Controls"
           >
@@ -875,43 +865,43 @@ export default function App() {
 
           <div className={`flex items-center bg-black/60 backdrop-blur-2xl border border-white/10 py-3 rounded-full shadow-2xl transition-all duration-500 overflow-hidden ${controlsExpanded ? 'opacity-100 translate-x-0 px-6 gap-5 max-w-[500px]' : 'opacity-0 translate-x-12 px-0 gap-0 max-w-0 border-transparent pointer-events-none'}`}>
             <button onClick={togglePlay} className="text-white hover:text-green-400 transition transform hover:scale-110">
-               {isPlaying ? <Icons.Pause /> : <Icons.Play />}
+              {isPlaying ? <Icons.Pause /> : <Icons.Play />}
             </button>
-            
+
             <div className="w-px h-5 bg-white/20"></div>
-            
+
             <div className="flex items-center gap-3 group">
-                <button onClick={toggleMute} className="text-white hover:text-blue-400 transition transform hover:scale-110">
-                   {isMuted || volume === 0 ? <Icons.Mute /> : <Icons.Volume />}
-                </button>
-                <input 
-                   type="range" 
-                   min="0" max="1" step="0.05" 
-                   value={isMuted ? 0 : volume} 
-                   onChange={handleVolumeChange}
-                   className="vol-slider w-24 opacity-60 hover:opacity-100 transition-opacity"
-                />
+              <button onClick={toggleMute} className="text-white hover:text-blue-400 transition transform hover:scale-110">
+                {isMuted || volume === 0 ? <Icons.Mute /> : <Icons.Volume />}
+              </button>
+              <input
+                type="range"
+                min="0" max="1" step="0.05"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="vol-slider w-24 opacity-60 hover:opacity-100 transition-opacity"
+              />
             </div>
 
             <div className="w-px h-5 bg-white/20"></div>
-            
+
             <button onClick={handleScreenshot} className="text-white hover:text-purple-400 transition transform hover:scale-110" title="Take Screenshot">
-               <Icons.Camera />
+              <Icons.Camera />
             </button>
           </div>
         </div>
       )}
 
       {/* 2. FOREGROUND UI LAYER (SIDEBAR) */}
-      <div 
+      <div
         className="glass-panel z-10 relative ui-layer shadow-[20px_0_40px_rgba(0,0,0,0.5)]"
         style={{ width: `${sidebarWidth}px`, minWidth: '320px' }}
       >
-        <div 
+        <div
           className={`resizer ${isDragging.current ? 'dragging' : ''}`}
           onMouseDown={() => {
-             isDragging.current = true;
-             document.body.style.cursor = 'col-resize';
+            isDragging.current = true;
+            document.body.style.cursor = 'col-resize';
           }}
         />
 
@@ -925,16 +915,16 @@ export default function App() {
               <h1 className="text-2xl font-bold tracking-wide leading-none">StreamOS</h1>
               <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5 mt-1 font-semibold tracking-widest uppercase">
                 {activeSourceCount > 0 ? (
-                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#4ade80]"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#4ade80]"></span>
                 ) : (
-                   <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                 )}
                 {activeSourceCount} ACTIVE SOURCES
               </div>
             </div>
           </div>
-          
-          <button 
+
+          <button
             className="p-3 rounded-xl bg-white/5 hover:bg-white/15 transition text-white border border-[rgba(255,255,255,0.1)] active:scale-95"
             onClick={() => setShowSettings(true)}
             title="Settings & Sources"
@@ -947,12 +937,12 @@ export default function App() {
         <div className="p-4 px-6 border-b border-[rgba(255,255,255,0.03)] space-y-3 shrink-0 bg-black/20 relative z-20">
           <div className="relative">
             <Icons.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input 
-              type="text" 
-              placeholder="Search by name, category, or country..." 
+            <input
+              type="text"
+              placeholder="Search by name, category, or country..."
               className="input-minimal w-full pl-10 bg-white/5 border-transparent focus:bg-white/10"
               value={filters.search}
-              onChange={(e) => setFilters({...filters, search: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             />
           </div>
 
@@ -964,7 +954,7 @@ export default function App() {
                  placeholder="Select Type"
                  options={typeOptions}
                  value={filters.type}
-                 onChange={(val) => setFilters({...filters, type: val || 'all', value: ''})}
+                 onChange={(val: any) => setFilters({...filters, type: val || 'all', value: ''})}
                />
              </div>
              
@@ -975,11 +965,11 @@ export default function App() {
                  placeholder={filters.type === 'all' ? "All" : "Select Filter..."}
                  options={filters.type === 'all' ? [{value: '', label: 'All'}] : getOptionsForType()}
                  value={filters.value}
-                 onChange={(val) => setFilters({...filters, value: val})}
+                 onChange={(val: any) => setFilters({...filters, value: val})}
                />
              </div>
           </div>
-          
+
           <div className="text-[11px] text-[var(--text-muted)] pt-1 flex justify-between items-center uppercase tracking-wider font-semibold">
             <span>{filteredChannels.length} Streams Indexed</span>
             {loadingState && <div className="loader-spinner w-3 h-3 border-2"></div>}
@@ -1002,7 +992,7 @@ export default function App() {
               {displayedChannels.map((channel, idx) => {
                 const countryDetails = getCountryDetails(channel.countryCode);
                 const isFocused = focusedIndex === idx;
-                
+
                 return (
                   <button
                     key={channel.id}
@@ -1017,16 +1007,16 @@ export default function App() {
                     {/* Compact Logo */}
                     <div className="w-10 h-10 rounded bg-black/60 border border-[rgba(255,255,255,0.05)] flex items-center justify-center overflow-hidden shrink-0">
                       {channel.logo ? (
-                        <img src={channel.logo} alt="" className="w-full h-full object-contain p-1" onError={(e) => (e.target as HTMLImageElement).style.display='none'} />
+                        <img src={channel.logo} alt="" className="w-full h-full object-contain p-1" onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} />
                       ) : (
                         <span className="text-sm font-bold opacity-40">{channel.name.charAt(0)}</span>
                       )}
                     </div>
-                    
+
                     {/* Compact Info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-[13px] truncate leading-tight mb-1 text-white/90">
-                         {channel.name}
+                        {channel.name}
                       </div>
                       <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5 truncate uppercase tracking-wide">
                         <span title={countryDetails.name} className="text-[12px]">{countryDetails.flag}</span>
@@ -1044,10 +1034,10 @@ export default function App() {
               })}
             </div>
           )}
-          
+
           {filteredChannels.length > RENDER_LIMIT && (
             <div className="p-4 text-center text-xs text-[var(--text-muted)] border-t border-[rgba(255,255,255,0.05)] mt-4">
-              + {filteredChannels.length - RENDER_LIMIT} more streams.<br/>Refine your search or filters to see them.
+              + {filteredChannels.length - RENDER_LIMIT} more streams.<br />Refine your search or filters to see them.
             </div>
           )}
         </div>
@@ -1057,12 +1047,12 @@ export default function App() {
       {showSettings && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#101014] border border-[rgba(255,255,255,0.1)] w-full max-w-lg rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden">
-            
+
             <div className="p-5 border-b border-[rgba(255,255,255,0.05)] flex justify-between items-center bg-[#15151a]">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Icons.Settings /> Configuration
               </h2>
-              <button 
+              <button
                 onClick={() => setShowSettings(false)}
                 className="p-1 rounded bg-white/5 hover:bg-white/10 transition"
               >
@@ -1072,14 +1062,14 @@ export default function App() {
 
             {/* Scrollable Settings Content */}
             <div className="p-6 overflow-y-auto max-h-[70vh] space-y-8">
-              
+
               {/* Source Management Section */}
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-1">Unified Providers</h3>
                   <p className="text-xs text-gray-500">Toggle stream providers to include them in your unified list.</p>
                 </div>
-                
+
                 <div className="space-y-2 bg-[#1a1a20] rounded-xl p-3 border border-[rgba(255,255,255,0.05)]">
                   {sources.map(src => (
                     <div key={src.id} className="flex justify-between items-center py-2 px-2 hover:bg-white/5 rounded-lg transition">
@@ -1093,11 +1083,11 @@ export default function App() {
                             <Icons.Trash />
                           </button>
                         )}
-                        <input 
-                          type="checkbox" 
-                          className="toggle-switch" 
-                          checked={src.active} 
-                          onChange={() => toggleSource(src.id)} 
+                        <input
+                          type="checkbox"
+                          className="toggle-switch"
+                          checked={src.active}
+                          onChange={() => toggleSource(src.id)}
                         />
                       </div>
                     </div>
@@ -1107,19 +1097,19 @@ export default function App() {
                 {/* Add Custom Source Form */}
                 <form onSubmit={addManualSource} className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <input 
-                      type="text" 
-                      placeholder="Custom Label" 
+                    <input
+                      type="text"
+                      placeholder="Custom Label"
                       className="input-minimal text-xs py-2 mb-2 bg-[#1a1a20]"
                       value={newSourceLabel}
-                      onChange={e=>setNewSourceLabel(e.target.value)}
+                      onChange={e => setNewSourceLabel(e.target.value)}
                     />
-                    <input 
-                      type="url" 
-                      placeholder="M3U Playlist URL..." 
+                    <input
+                      type="url"
+                      placeholder="M3U Playlist URL..."
                       className="input-minimal text-xs py-2 bg-[#1a1a20]"
                       value={newSourceUrl}
-                      onChange={e=>setNewSourceUrl(e.target.value)}
+                      onChange={e => setNewSourceUrl(e.target.value)}
                     />
                   </div>
                   <button type="submit" className="bg-white text-black px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-200 transition h-fit">
@@ -1131,13 +1121,13 @@ export default function App() {
               {/* Bitrate Selector */}
               <div className="space-y-2 pt-6 border-t border-[rgba(255,255,255,0.05)]">
                 <label className="text-sm font-medium text-gray-400 uppercase tracking-wider">Stream Quality (Bitrate)</label>
-                <select 
+                <select
                   className="input-minimal w-full appearance-none cursor-pointer bg-[#1a1a20]"
                   value={selectedQuality}
                   onChange={(e) => setSelectedQuality(Number(e.target.value))}
                   disabled={availableQualities.length <= 1}
                 >
-                  {availableQualities.length > 0 
+                  {availableQualities.length > 0
                     ? availableQualities.map(q => <option key={q.id} value={q.id}>{q.label}</option>)
                     : <option value="-1">Auto (No alternative levels found)</option>
                   }
@@ -1145,26 +1135,10 @@ export default function App() {
                 <p className="text-xs text-gray-500">Force a specific resolution/bitrate if the broadcast supports it.</p>
               </div>
 
-              {/* Screenshot Tool */}
-              <div className="space-y-2 pt-6 border-t border-[rgba(255,255,255,0.05)]">
-                <label className="text-sm font-medium text-gray-400 uppercase tracking-wider">Capture Tools</label>
-                <button 
-                  onClick={handleScreenshot}
-                  className="w-full p-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 transition flex items-center justify-center gap-2 font-medium"
-                >
-                  <Icons.Camera /> Take Stream Screenshot
-                </button>
-                {screenshotMsg && (
-                  <p className={`text-xs text-center mt-2 ${screenshotMsg.includes('Error') ? 'text-red-400' : 'text-green-400'}`}>
-                    {screenshotMsg}
-                  </p>
-                )}
-              </div>
-              
             </div>
-            
+
             <div className="p-3 text-center bg-[#15151a] border-t border-[rgba(255,255,255,0.05)]">
-                 <p className="text-[10px] text-gray-600 uppercase tracking-widest">StreamOS Engine v4.0 • Unified Architecture</p>
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest">StreamOS Engine v4.0 • Unified Architecture</p>
             </div>
           </div>
         </div>
