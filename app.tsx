@@ -224,7 +224,7 @@ const getCountryDetails = (code) => {
 // --- COMPONENTS ---
 
 const Icons = {
-  Search: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
+  Search: (props: any) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
   ChevronDown: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>,
   TV: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>,
   Filter: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>,
@@ -248,7 +248,7 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
   const hlsRef = useRef(null);
 
   useEffect(() => {
-    if (!window.Hls) {
+    if (!(window as any).Hls) {
       const script = document.createElement('script');
       script.src = HLS_URL;
       script.async = true;
@@ -272,24 +272,25 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
 
       if (hlsRef.current) hlsRef.current.destroy();
 
-      if (window.Hls && window.Hls.isSupported()) {
-        const hls = new window.Hls({ enableWorker: true, lowLatencyMode: true });
+      if ((window as any).Hls && (window as any).Hls.isSupported()) {
+        const Hls = (window as any).Hls;
+        const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
         hlsRef.current = hls;
 
         hls.loadSource(channel.url);
         hls.attachMedia(video);
 
-        hls.on(window.Hls.Events.MANIFEST_PARSED, (e, data) => {
+        hls.on(Hls.Events.MANIFEST_PARSED, (e: any, data: any) => {
           video.play().then(() => onStatus('PLAYING')).catch(() => onStatus('PAUSED - CLICK TO PLAY'));
           
-          const levels = data.levels.map((l, idx) => ({
+          const levels = data.levels.map((l: any, idx: number) => ({
             id: idx,
             label: l.height ? `${l.height}p (${Math.round(l.bitrate/1000)} kbps)` : `${Math.round(l.bitrate/1000)} kbps`
           }));
           setAvailableQualities([{id: -1, label: 'Auto (Adaptive)'}, ...levels]);
         });
 
-        hls.on(window.Hls.Events.ERROR, (event, data) => {
+        hls.on(Hls.Events.ERROR, (event: any, data: any) => {
           if (data.fatal) {
             onStatus('STREAM UNAVAILABLE');
             hls.destroy();
@@ -338,7 +339,10 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
       crossOrigin="anonymous" 
       autoPlay
       playsInline
-      onClick={(e) => e.target.paused ? e.target.play() : e.target.pause()}
+      onClick={(e) => {
+        const target = e.target as HTMLVideoElement;
+        target.paused ? target.play() : target.pause()
+      }}
     />
   );
 };
@@ -451,7 +455,7 @@ export default function App() {
     const styleSheet = document.createElement("style");
     styleSheet.innerText = globalStyles;
     document.head.appendChild(styleSheet);
-    return () => document.head.removeChild(styleSheet);
+    return () => { document.head.removeChild(styleSheet); };
   }, []);
 
   useEffect(() => {
@@ -579,24 +583,24 @@ export default function App() {
          const details = getCountryDetails(code);
          return { value: code, label: `${details.flag} ${details.name}` };
       })
-      .sort((a, b) => a.label.localeCompare(b.label));
+      .sort((a: any, b: any) => a.label.localeCompare(b.label));
 
     const processedCategories = Array.from(uniqueCategories)
       .filter(c => c)
-      .map(c => ({ value: c, label: c }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+      .map(c => ({ value: c, label: c as string }))
+      .sort((a: any, b: any) => a.label.localeCompare(b.label));
 
     const processedLanguages = Array.from(uniqueLanguages)
       .filter(l => l)
-      .map(l => ({ value: l, label: l }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+      .map(l => ({ value: l, label: l as string }))
+      .sort((a: any, b: any) => a.label.localeCompare(b.label));
 
     const processedSources = Array.from(uniqueSources)
       .map(s => {
         const srcObj = sources.find(src => src.id === s);
-        return { value: s, label: srcObj ? srcObj.label : s };
+        return { value: s, label: srcObj ? srcObj.label : s as string };
       })
-      .sort((a, b) => a.label.localeCompare(b.label));
+      .sort((a: any, b: any) => a.label.localeCompare(b.label));
 
     return { 
       countries: processedCountries, 
@@ -1013,7 +1017,7 @@ export default function App() {
                     {/* Compact Logo */}
                     <div className="w-10 h-10 rounded bg-black/60 border border-[rgba(255,255,255,0.05)] flex items-center justify-center overflow-hidden shrink-0">
                       {channel.logo ? (
-                        <img src={channel.logo} alt="" className="w-full h-full object-contain p-1" onError={(e) => e.target.style.display='none'} />
+                        <img src={channel.logo} alt="" className="w-full h-full object-contain p-1" onError={(e) => (e.target as HTMLImageElement).style.display='none'} />
                       ) : (
                         <span className="text-sm font-bold opacity-40">{channel.name.charAt(0)}</span>
                       )}
@@ -1130,7 +1134,7 @@ export default function App() {
                 <select 
                   className="input-minimal w-full appearance-none cursor-pointer bg-[#1a1a20]"
                   value={selectedQuality}
-                  onChange={(e) => setSelectedQuality(e.target.value)}
+                  onChange={(e) => setSelectedQuality(Number(e.target.value))}
                   disabled={availableQualities.length <= 1}
                 >
                   {availableQualities.length > 0 
