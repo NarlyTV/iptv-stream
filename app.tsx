@@ -153,23 +153,21 @@ const HLS_URL = 'https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js';
 
 // Ultra Expanded Default Sources Config
 const DEFAULT_SOURCES = [
+  { id: 'iptv_global', label: 'IPTV-Org (Global/All 30k+)', url: 'https://iptv-org.github.io/iptv/index.m3u', active: true, custom: false },
+  { id: 'iptv_movies', label: 'IPTV-Org (Movies)', url: 'https://iptv-org.github.io/iptv/categories/movies.m3u', active: true, custom: false },
+  { id: 'iptv_news', label: 'IPTV-Org (News)', url: 'https://iptv-org.github.io/iptv/categories/news.m3u', active: true, custom: false },
+  { id: 'iptv_sports', label: 'IPTV-Org (Sports)', url: 'https://iptv-org.github.io/iptv/categories/sports.m3u', active: true, custom: false },
+  { id: 'iptv_music', label: 'IPTV-Org (Music)', url: 'https://iptv-org.github.io/iptv/categories/music.m3u', active: true, custom: false },
   { id: 'f_main', label: 'Free-TV (Master Playlist)', url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', active: true, custom: false },
   { id: 'f_movies', label: 'Free-TV (Movies)', url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist_movies.m3u8', active: true, custom: false },
-  { id: 'f_news', label: 'Free-TV (News)', url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist_news.m3u8', active: true, custom: false },
   { id: 'f_kids', label: 'Free-TV (Kids)', url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist_kids.m3u8', active: true, custom: false },
-  { id: 'i_mena', label: 'IPTV-Org (Middle East / Arab)', url: 'https://iptv-org.github.io/iptv/regions/mena.m3u', active: true, custom: false },
-  { id: 'i_ir', label: 'IPTV-Org (Iran)', url: 'https://iptv-org.github.io/iptv/countries/ir.m3u', active: true, custom: false },
-  { id: 'i_iq', label: 'IPTV-Org (Iraq)', url: 'https://iptv-org.github.io/iptv/countries/iq.m3u', active: true, custom: false },
-  { id: 'i_ae', label: 'IPTV-Org (UAE)', url: 'https://iptv-org.github.io/iptv/countries/ae.m3u', active: true, custom: false },
-  { id: 'i_ru', label: 'IPTV-Org (Russia)', url: 'https://iptv-org.github.io/iptv/countries/ru.m3u', active: true, custom: false },
-  { id: 'i_cn', label: 'IPTV-Org (China)', url: 'https://iptv-org.github.io/iptv/countries/cn.m3u', active: true, custom: false },
-  { id: 'i_global', label: 'IPTV-Org (Global/All 30k+)', url: 'https://iptv-org.github.io/iptv/index.m3u', active: true, custom: false },
-  { id: 'p_usa', label: 'Pluto TV (USA)', url: 'https://i.mjh.nz/PlutoTV/us.m3u8', active: true, custom: false },
-  { id: 'plex_us', label: 'Plex Live TV', url: 'https://i.mjh.nz/Plex/us.m3u8', active: true, custom: false },
-  { id: 'roku_us', label: 'Roku Channel', url: 'https://i.mjh.nz/Roku/all.m3u8', active: true, custom: false },
-  { id: 's_usa', label: 'Samsung TV Plus', url: 'https://i.mjh.nz/SamsungTVPlus/us.m3u8', active: true, custom: false },
-  { id: 'tubi_us', label: 'Tubi TV', url: 'https://i.mjh.nz/Tubi/all.m3u8', active: true, custom: false },
-  { id: 'pbs_us', label: 'PBS Network', url: 'https://i.mjh.nz/PBS/all.m3u8', active: true, custom: false }
+  { id: 'p_all', label: 'Pluto TV (Global Aggregation)', url: 'https://i.mjh.nz/PlutoTV/all.m3u8', active: true, custom: false },
+  { id: 'plex_all', label: 'Plex Live TV (Global Aggregation)', url: 'https://i.mjh.nz/Plex/all.m3u8', active: true, custom: false },
+  { id: 's_all', label: 'Samsung TV Plus (Global Aggregation)', url: 'https://i.mjh.nz/SamsungTVPlus/all.m3u8', active: true, custom: false },
+  { id: 'roku_all', label: 'Roku Channel (Global Aggregation)', url: 'https://i.mjh.nz/Roku/all.m3u8', active: true, custom: false },
+  { id: 'tubi_all', label: 'Tubi TV (Global Aggregation)', url: 'https://i.mjh.nz/Tubi/all.m3u8', active: true, custom: false },
+  { id: 'pbs_all', label: 'PBS Network (Global Aggregation)', url: 'https://i.mjh.nz/PBS/all.m3u8', active: true, custom: false },
+  { id: 'stirr_all', label: 'Stirr TV (Global Aggregation)', url: 'https://i.mjh.nz/Stirr/all.m3u8', active: true, custom: false }
 ];
 
 const RENDER_LIMIT = 400;
