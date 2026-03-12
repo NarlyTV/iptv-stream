@@ -228,7 +228,9 @@ const Icons = {
   Radio: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48 0a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>,
   PiP: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="13" y="13" width="6" height="4"></rect></svg>,
   Cast: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path><line x1="2" y1="20" x2="2.01" y2="20"></line></svg>,
-  Check: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+  Check: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>,
+  Lock: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>,
+  Unlock: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
 };
 
 const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality, videoRef, setIsPlaying, dataSaver, videoFit }: any) => {
@@ -580,6 +582,15 @@ export default function App() {
   const [dataSaver, setDataSaver] = useState(() => getCookie('streamos_dataSaver', false));
   const [videoFit, setVideoFit] = useState(() => getCookie('streamos_videoFit', 'contain'));
   const [healthCache, setHealthCache] = useState<any>({});
+  
+  // Mobile Features State
+  const [isScreenLocked, setIsScreenLocked] = useState(false);
+  const lastTapRef = useRef<{time: number, x: number}>({time: 0, x: 0});
+  const touchStartRef = useRef<{y: number, startVol: number} | null>(null);
+
+  const vibrate = (ms = 20) => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {}
+  };
 
   const idleTimer = useRef<any>(null);
   const isDragging = useRef(false);
@@ -874,6 +885,7 @@ export default function App() {
   }, [displayedChannels, focusedIndex, showSettings]);
 
   const togglePlay = () => {
+    vibrate(25);
     if (videoRef.current) {
       if (videoRef.current.paused) videoRef.current.play();
       else videoRef.current.pause();
@@ -881,6 +893,7 @@ export default function App() {
   };
 
   const toggleMute = () => {
+    vibrate(15);
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
@@ -896,6 +909,56 @@ export default function App() {
         videoRef.current.muted = false;
         setIsMuted(false);
       }
+    }
+  };
+
+  const handleVideoTouchStart = (e: any) => {
+    if (isScreenLocked) return;
+    const touch = e.touches[0];
+    const now = Date.now();
+    const isRightHalf = touch.clientX > window.innerWidth / 2;
+    
+    // Double Tap to Seek
+    if (now - lastTapRef.current.time < 300 && Math.abs(touch.clientX - lastTapRef.current.x) < 40) {
+      if (videoRef.current) {
+        vibrate(40); // Harder vibration on double tap
+        videoRef.current.currentTime += isRightHalf ? 10 : -10;
+        setScreenshotMsg(isRightHalf ? '⏭️ +10s' : '⏮️ -10s');
+        setTimeout(() => setScreenshotMsg(''), 1000);
+      }
+    }
+    lastTapRef.current = { time: now, x: touch.clientX };
+
+    // Volume Swipe Init
+    if (isRightHalf) {
+      touchStartRef.current = { y: touch.clientY, startVol: volume };
+    }
+  };
+
+  const handleVideoTouchMove = (e: any) => {
+    if (isScreenLocked || !touchStartRef.current || !isMobile) return;
+    const touch = e.touches[0];
+    
+    const deltaY = touchStartRef.current.y - touch.clientY;
+    // 300px swipe = 100% volume change
+    let newVol = touchStartRef.current.startVol + (deltaY / 300);
+    newVol = Math.max(0, Math.min(1, newVol));
+    
+    setVolume(newVol);
+    if (videoRef.current) {
+      videoRef.current.volume = newVol;
+      if (newVol > 0 && isMuted) {
+         videoRef.current.muted = false;
+         setIsMuted(false);
+      }
+    }
+    setScreenshotMsg(`Volume: ${Math.round(newVol * 100)}%`);
+  };
+
+  const handleVideoTouchEnd = () => {
+    if (touchStartRef.current) {
+      touchStartRef.current = null;
+      setTimeout(() => setScreenshotMsg(''), 1000);
     }
   };
 
@@ -1020,10 +1083,27 @@ export default function App() {
   };
 
   return (
-    <div className={`w-screen h-screen relative bg-black flex ${isIdle ? 'ui-idle' : ''}`}>
+    <div className={`w-screen h-screen relative bg-black flex ${isIdle && !isScreenLocked ? 'ui-idle' : ''}`}>
+
+      {/* Mobile Screen Lock Overlay */}
+      {isScreenLocked && isMobile && (
+        <div className="absolute inset-0 z-[100] flex items-end justify-center pb-12">
+           <button 
+             onClick={() => { vibrate(30); setIsScreenLocked(false); }}
+             className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.8)] animate-pulse active:bg-white/30 transition-all"
+           >
+             <Icons.Lock />
+           </button>
+        </div>
+      )}
 
       {/* 1. BACKGROUND VIDEO LAYER */}
-      <div className="absolute inset-0 overflow-hidden flex items-center justify-center p-0 md:p-8">
+      <div 
+        className={`absolute inset-0 overflow-hidden flex items-center justify-center p-0 md:p-8 ${isScreenLocked ? 'pointer-events-none' : ''}`}
+        onTouchStart={handleVideoTouchStart}
+        onTouchMove={handleVideoTouchMove}
+        onTouchEnd={handleVideoTouchEnd}
+      >
         <div className={`relative w-full h-full ${isMobile ? '' : 'rounded-md overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]'}`}>
           <AmbilightEngine videoRef={videoRef} active={!isMobile && playerStatus === 'PLAYING'} />
           <VideoPlayer
@@ -1085,6 +1165,12 @@ export default function App() {
           </button>
 
           <div className={`flex items-center bg-black/60 backdrop-blur-2xl border border-white/10 py-3 rounded-full shadow-2xl transition-all duration-500 overflow-hidden ${controlsExpanded ? 'opacity-100 translate-x-0 px-6 gap-5 max-w-[500px]' : 'opacity-0 translate-x-12 px-0 gap-0 max-w-0 border-transparent pointer-events-none'}`}>
+            {isMobile && (
+               <button onClick={() => { vibrate(20); setIsScreenLocked(true); setControlsExpanded(false); }} className="text-white hover:text-red-400 transition transform hover:scale-110" title="Lock Screen">
+                 <Icons.Unlock />
+               </button>
+            )}
+            
             <button onClick={togglePlay} className="text-white hover:text-green-400 transition transform hover:scale-110">
               {isPlaying ? <Icons.Pause /> : <Icons.Play />}
             </button>
@@ -1140,7 +1226,7 @@ export default function App() {
 
       {/* 2. FOREGROUND UI LAYER (SIDEBAR) */}
       <div
-        className={`glass-panel z-40 relative ui-layer shadow-[20px_0_40px_rgba(0,0,0,0.5)] transition-transform duration-300 ${sidebarCollapsed ? '-translate-x-full absolute' : 'translate-x-0 absolute md:relative'}`}
+        className={`glass-panel z-40 relative ui-layer shadow-[20px_0_40px_rgba(0,0,0,0.5)] transition-transform duration-300 ${sidebarCollapsed || isScreenLocked ? '-translate-x-full absolute' : 'translate-x-0 absolute md:relative'}`}
         style={!isMobile ? { width: `${sidebarWidth}px`, minWidth: '320px' } : { width: '100%' }}
       >
         {!isMobile && (
@@ -1273,10 +1359,10 @@ export default function App() {
                     <div className="w-10 h-10 rounded bg-black/60 border border-[rgba(255,255,255,0.05)] flex items-center justify-center overflow-hidden shrink-0">
                       {channel.logo ? (
                         <img src={channel.logo} alt="" className="w-full h-full object-contain p-1" onError={(e) => {
-                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.name)}&background=random&color=fff&size=64&bold=true`;
+                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.name.trim())}&background=random&color=fff&size=64&bold=true`;
                         }} />
                       ) : (
-                        <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(channel.name)}&background=random&color=fff&size=64&bold=true`} alt="" className="w-full h-full object-cover" />
+                        <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(channel.name.trim())}&background=random&color=fff&size=64&bold=true`} alt="" className="w-full h-full object-cover" />
                       )}
                     </div>
 
