@@ -330,15 +330,15 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    const handlePlay = () => { setIsPlaying(true); onStatus('PLAYING'); };
+    const handlePause = () => { setIsPlaying(false); onStatus('PAUSED'); };
     vid.addEventListener('play', handlePlay);
     vid.addEventListener('pause', handlePause);
     return () => {
       vid.removeEventListener('play', handlePlay);
       vid.removeEventListener('pause', handlePause);
     }
-  }, [videoRef, setIsPlaying]);
+  }, [videoRef, setIsPlaying, onStatus]);
 
   useEffect(() => {
     if (hlsRef.current && currentQuality !== undefined) {
@@ -564,7 +564,7 @@ export default function App() {
   // Settings & Tools States
   const [showSettings, setShowSettings] = useState(false);
   const [availableQualities, setAvailableQualities] = useState<any>([]);
-  const [selectedQuality, setSelectedQuality] = useState(-1);
+  const [selectedQuality, setSelectedQuality] = useState(() => getCookie('streamos_selectedQuality', -1));
   const [screenshotMsg, setScreenshotMsg] = useState('');
   const [newSourceLabel, setNewSourceLabel] = useState('');
   const [newSourceUrl, setNewSourceUrl] = useState('');
@@ -605,6 +605,7 @@ export default function App() {
   useEffect(() => { setCookie('streamos_dataSaver', dataSaver); }, [dataSaver]);
   useEffect(() => { setCookie('streamos_videoFit', videoFit); }, [videoFit]);
   useEffect(() => { setCookie('streamos_activeChannel', activeChannel); }, [activeChannel]);
+  useEffect(() => { setCookie('streamos_selectedQuality', selectedQuality); }, [selectedQuality]);
 
 
 
@@ -784,7 +785,7 @@ export default function App() {
     });
   }, [allChannels, filters]);
 
-  const displayedChannels = filteredChannels.slice(0, RENDER_LIMIT);
+  const displayedChannels = useMemo(() => filteredChannels.slice(0, RENDER_LIMIT), [filteredChannels]);
 
   const channelListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1058,8 +1059,8 @@ export default function App() {
                  </span>
                </span>
             )}
-            {playerStatus === 'PLAYING' && <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_10px_rgba(74,222,128,1)]"></span>}
-            <span className={`font-bold tracking-widest ${playerStatus === 'STREAM UNAVAILABLE' ? 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.8)]' : 'text-white'}`}>{playerStatus}</span>
+            {(playerStatus === 'PLAYING' || playerStatus === 'PAUSED') && <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_10px_rgba(74,222,128,1)]" title="Stream is Live"></span>}
+            <span className={`font-bold tracking-widest ${playerStatus === 'STREAM UNAVAILABLE' ? 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.8)]' : 'text-white'}`}>{playerStatus === 'PAUSED - CLICK TO PLAY' ? 'PAUSED' : playerStatus}</span>
           </div>
         </div>
       )}
@@ -1523,7 +1524,7 @@ export default function App() {
                        </div>
                        <button 
                          onClick={() => {
-                           ['streamos_sources','streamos_filters','streamos_sidebarWidth','streamos_volume','streamos_isMuted','streamos_activeChannel'].forEach(c => document.cookie = c + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;");
+                           ['streamos_sources','streamos_filters','streamos_sidebarWidth','streamos_volume','streamos_isMuted','streamos_activeChannel','streamos_selectedQuality','streamos_autoResume','streamos_dataSaver','streamos_videoFit'].forEach(c => document.cookie = c + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;");
                            window.location.reload();
                          }}
                          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-500/30 rounded-lg text-xs font-bold transition"
