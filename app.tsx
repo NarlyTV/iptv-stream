@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import gsap from 'gsap';
 
 // --- MINIMALIST MODERN CSS ---
 const globalStyles = `
@@ -230,7 +231,7 @@ const Icons = {
   Check: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
 };
 
-const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality, videoRef, setIsPlaying, dataSaver }: any) => {
+const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality, videoRef, setIsPlaying, dataSaver, videoFit }: any) => {
   const hlsRef = useRef(null);
 
   useEffect(() => {
@@ -348,7 +349,7 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
   return (
     <video
       ref={videoRef}
-      className={`w-full h-full object-contain absolute inset-0 bg-black ${dataSaver ? 'z-[1]' : 'z-0'}`}
+      className={`w-full h-full absolute inset-0 bg-black ${dataSaver ? 'z-[1]' : 'z-0'} ${videoFit === 'cover' ? 'object-cover' : 'object-contain'}`}
       crossOrigin="anonymous"
       autoPlay
       playsInline
@@ -577,7 +578,7 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(() => getCookie('streamos_isMuted', false));
   const [autoResume, setAutoResume] = useState(() => getCookie('streamos_autoResume', true));
   const [dataSaver, setDataSaver] = useState(() => getCookie('streamos_dataSaver', false));
-  const [ambilight, setAmbilight] = useState(() => getCookie('streamos_ambilight', true));
+  const [videoFit, setVideoFit] = useState(() => getCookie('streamos_videoFit', 'contain'));
   const [healthCache, setHealthCache] = useState<any>({});
 
   const idleTimer = useRef<any>(null);
@@ -602,8 +603,10 @@ export default function App() {
   useEffect(() => { setCookie('streamos_isMuted', isMuted); }, [isMuted]);
   useEffect(() => { setCookie('streamos_autoResume', autoResume); }, [autoResume]);
   useEffect(() => { setCookie('streamos_dataSaver', dataSaver); }, [dataSaver]);
-  useEffect(() => { setCookie('streamos_ambilight', ambilight); }, [ambilight]);
+  useEffect(() => { setCookie('streamos_videoFit', videoFit); }, [videoFit]);
   useEffect(() => { setCookie('streamos_activeChannel', activeChannel); }, [activeChannel]);
+
+
 
   const fetchWithFallback = async (url: string) => {
     try {
@@ -782,6 +785,17 @@ export default function App() {
   }, [allChannels, filters]);
 
   const displayedChannels = filteredChannels.slice(0, RENDER_LIMIT);
+
+  const channelListRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (channelListRef.current && displayedChannels.length > 0 && !loadingState) {
+      gsap.fromTo(
+        channelListRef.current.children,
+        { opacity: 0, y: 10, scale: 0.98 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.3, stagger: 0.02, ease: "power2.out", overwrite: true }
+      );
+    }
+  }, [displayedChannels, loadingState]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -1009,8 +1023,8 @@ export default function App() {
 
       {/* 1. BACKGROUND VIDEO LAYER */}
       <div className="absolute inset-0 overflow-hidden flex items-center justify-center p-0 md:p-8">
-        <div className={`relative w-full h-full ${!ambilight || isMobile ? '' : 'rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]'}`}>
-          <AmbilightEngine videoRef={videoRef} active={ambilight && !isMobile && playerStatus === 'PLAYING'} />
+        <div className={`relative w-full h-full ${isMobile ? '' : 'rounded-md overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]'}`}>
+          <AmbilightEngine videoRef={videoRef} active={!isMobile && playerStatus === 'PLAYING'} />
           <VideoPlayer
             channel={activeChannel}
             onStatus={setPlayerStatus}
@@ -1019,11 +1033,12 @@ export default function App() {
             videoRef={videoRef}
             setIsPlaying={setIsPlaying}
             dataSaver={dataSaver}
+            videoFit={videoFit}
           />
         </div>
       </div>
 
-      <div className={`absolute inset-0 bg-gradient-to-r from-black/90 via-black/30 to-transparent pointer-events-none z-0 ui-layer transition-opacity duration-300 ${sidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}></div>
+      <div className={`absolute inset-0 bg-gradient-to-r from-black/90 via-black/30 to-transparent pointer-events-none z-0 transition-opacity duration-300 ${sidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}></div>
 
       {/* Main Status OSD */}
       {!activeChannel ? (
@@ -1178,8 +1193,9 @@ export default function App() {
             <Icons.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
+              style={{ paddingLeft: '36px' }}
               placeholder="Search by name, category, or country..."
-              className="input-minimal w-full pl-10 pr-8 bg-white/5 border-transparent focus:bg-white/10"
+              className="input-minimal w-full pr-8 bg-white/5 border-transparent focus:bg-white/10"
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             />
@@ -1236,7 +1252,7 @@ export default function App() {
               No streams match your criteria, or no sources enabled.
             </div>
           ) : (
-            <div className="channel-grid">
+            <div className="channel-grid" ref={channelListRef}>
               {displayedChannels.map((channel, idx) => {
                 const countryDetails = getCountryDetails(channel.countryCode);
                 const isFocused = focusedIndex === idx;
@@ -1473,16 +1489,28 @@ export default function App() {
 
                     <div className="flex justify-between items-center bg-black/40 rounded-xl p-3 border border-[rgba(255,255,255,0.03)] hover:bg-white/5 transition">
                       <div className="pr-4">
-                        <div className="text-sm font-medium text-white flex items-center gap-2">Dynamic Ambilight Glow <span className="bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-widest leading-none">Desktop Only</span></div>
-                        <div className="text-[10px] text-gray-500 mt-1">Extract real-time colors from the video frame to cast a cinematic CSS shadow behind the player. Highly performant.</div>
+                        <div className="text-sm font-medium text-white flex items-center gap-2">Aspect Ratio Mode <span className="bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-widest leading-none">Perspective</span></div>
+                        <div className="text-[10px] text-gray-500 mt-1">Select whether the stream preserves native aspect ratio or spans to completely fill the screen.</div>
                       </div>
-                      <input
-                        type="checkbox"
-                        className="toggle-switch shadow-inner shrink-0"
-                        checked={ambilight}
-                        onChange={() => setAmbilight(!ambilight)}
-                        disabled={isMobile}
-                      />
+                      
+                      <div className="flex bg-black/50 border border-white/10 rounded-lg p-1 shrink-0">
+                        <button 
+                          title="Fit Original (Black Bars)"
+                          onClick={() => setVideoFit('contain')} 
+                          className={`flex items-center justify-center p-2 rounded transition-all ${videoFit === 'contain' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 hover:text-white'}`}
+                        >
+                          {/* Contain SVG icon: Shows video strictly bounded completely inside an outline */}
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="6" y="8" width="12" height="8" rx="1" fill="currentColor"/></svg>
+                        </button>
+                        <button 
+                          title="Span to Cover (Crop)"
+                          onClick={() => setVideoFit('cover')} 
+                          className={`flex items-center justify-center p-2 rounded transition-all ${videoFit === 'cover' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 hover:text-white'}`}
+                        >
+                          {/* Cover SVG icon: Shows video overflowing boundary box */}
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2" strokeDasharray="4 2"/><rect x="1" y="2" width="22" height="20" rx="1" fill="currentColor"/></svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
