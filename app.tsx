@@ -348,7 +348,7 @@ const VideoPlayer = ({ channel, onStatus, setAvailableQualities, currentQuality,
   return (
     <video
       ref={videoRef}
-      className={`w-full h-full object-cover absolute inset-0 bg-black ${dataSaver ? 'z-[1]' : 'z-0'}`}
+      className={`w-full h-full object-contain absolute inset-0 bg-black ${dataSaver ? 'z-[1]' : 'z-0'}`}
       crossOrigin="anonymous"
       autoPlay
       playsInline
@@ -1425,14 +1425,14 @@ export default function App() {
                     <label className="text-sm font-bold text-white uppercase tracking-wider block">Stream Resolution (Bitrate)</label>
                     <div className="relative">
                       <select
-                        className="input-minimal w-full appearance-none cursor-pointer bg-black/50 border-white/10 py-3 pl-4 pr-10 hover:border-white/30"
+                        className="input-minimal w-full appearance-none cursor-pointer bg-black/50 border-white/10 py-3 pl-4 pr-10 hover:border-white/30 text-white"
                         value={selectedQuality}
                         onChange={(e) => setSelectedQuality(Number(e.target.value))}
                         disabled={availableQualities.length <= 1}
                       >
                         {availableQualities.length > 0
-                          ? availableQualities.map(q => <option key={q.id} value={q.id}>{q.label}</option>)
-                          : <option value="-1">Auto (Adaptive Engine Active)</option>
+                          ? availableQualities.map(q => <option key={q.id} value={q.id} className="bg-[#1a1a20] text-white">{q.label}</option>)
+                          : <option value="-1" className="bg-[#1a1a20] text-white">Auto (Adaptive Engine Active)</option>
                         }
                       </select>
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
