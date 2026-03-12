@@ -206,13 +206,13 @@ const getCountryDetails = (code) => {
   let cleanCode = code.trim().toUpperCase();
 
   if (cleanCode.length === 2) {
+    const flag = String.fromCodePoint(cleanCode.charCodeAt(0) + 127397, cleanCode.charCodeAt(1) + 127397);
     try {
       // Precise Emoji conversion using Regional Indicator Symbols
-      const flag = String.fromCodePoint(cleanCode.charCodeAt(0) + 127397, cleanCode.charCodeAt(1) + 127397);
       const name = new Intl.DisplayNames(['en'], { type: 'region' }).of(cleanCode);
       return { flag, name: name || cleanCode };
     } catch (e) {
-      return { flag: '🌐', name: cleanCode };
+      return { flag, name: cleanCode };
     }
   }
   // Fallback for non-standard country tags
@@ -222,6 +222,7 @@ const getCountryDetails = (code) => {
 // --- COMPONENTS ---
 
 const Icons = {
+  Menu: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>,
   Search: (props: any) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
   ChevronDown: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>,
   TV: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>,
@@ -439,6 +440,19 @@ export default function App() {
   const [isIdle, setIsIdle] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => getCookie('streamos_sidebarWidth', 480));
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setSidebarCollapsed(true);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Settings & Tools States
   const [showSettings, setShowSettings] = useState(false);
@@ -938,22 +952,41 @@ export default function App() {
         </div>
       )}
 
+      {/* Sidebar Open Button */}
+      {sidebarCollapsed && (
+        <button 
+          onClick={() => setSidebarCollapsed(false)}
+          className="absolute top-6 left-6 z-50 p-3 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 transition-all shadow-2xl ui-layer"
+        >
+          <Icons.Menu />
+        </button>
+      )}
+
       {/* 2. FOREGROUND UI LAYER (SIDEBAR) */}
       <div
-        className="glass-panel z-10 relative ui-layer shadow-[20px_0_40px_rgba(0,0,0,0.5)]"
-        style={{ width: `${sidebarWidth}px`, minWidth: '320px' }}
+        className={`glass-panel z-40 relative ui-layer shadow-[20px_0_40px_rgba(0,0,0,0.5)] transition-transform duration-300 ${sidebarCollapsed ? '-translate-x-full absolute' : 'translate-x-0 absolute md:relative'}`}
+        style={!isMobile ? { width: `${sidebarWidth}px`, minWidth: '320px' } : { width: '100%' }}
       >
-        <div
-          className={`resizer ${isDragging.current ? 'dragging' : ''}`}
-          onMouseDown={() => {
-            isDragging.current = true;
-            document.body.style.cursor = 'col-resize';
-          }}
-        />
+        {!isMobile && (
+          <div
+            className={`resizer ${isDragging.current ? 'dragging' : ''}`}
+            onMouseDown={() => {
+              isDragging.current = true;
+              document.body.style.cursor = 'col-resize';
+            }}
+          />
+        )}
 
         {/* Condensed Header */}
-        <div className="p-6 border-b border-[rgba(255,255,255,0.05)] shrink-0 flex justify-between items-center">
+        <div className="p-6 border-b border-[rgba(255,255,255,0.05)] shrink-0 flex justify-between items-center bg-black/30 md:bg-transparent">
           <div className="flex items-center gap-4">
+            <button 
+              className="p-2 -ml-2 rounded-xl bg-white/5 hover:bg-white/15 transition text-white border border-[rgba(255,255,255,0.1)] active:scale-95"
+              onClick={() => setSidebarCollapsed(true)}
+              title="Collapse Sidebar"
+            >
+              <Icons.Menu />
+            </button>
             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black shadow-[0_0_15px_rgba(255,255,255,0.2)]">
               <Icons.TV />
             </div>
